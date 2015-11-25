@@ -2,7 +2,6 @@
 import operator
 import re
 import os
-import io
 
 class huffman:
     message=""
@@ -26,47 +25,49 @@ class huffman:
     def decode(self):
         msg=self.message
         tmp_root=self.root
-        res=""        
+        res=[]        
         for c in msg:
             if tmp_root.symbol:
-                res+=tmp_root.symbol
+                res.append(tmp_root.symbol)
                 tmp_root=self.root
             if c=="1":
                 tmp_root=tmp_root.right
-            if c=="0":
+            else:
                 tmp_root=tmp_root.left
         if tmp_root.symbol:
-                res+=tmp_root.symbol
+                res.append(tmp_root.symbol)
                 tmp_root=self.root
-        self.message=res
+        self.message=''.join(res)
         return res
 
 
     def __init__(self,input_message):
-        self.message=input_message
-        self.probability_table=dict.fromkeys([c for c in self.message],0.)
-        for c in self.message:
-            self.probability_table[c]+=1./len(self.message)
-        self.probability_table=sorted(self.probability_table.items(), key=operator.itemgetter(1))
-        #self.probability_table={item[0]:item[1] for item in probability_table}
+        if input_message:
+            self.message=input_message
+            self.probability_table=dict.fromkeys([c for c in self.message],0.)
+            for c in self.message:
+                self.probability_table[c]+=1./len(self.message)
+            self.probability_table=sorted(self.probability_table.items(), key=operator.itemgetter(1))
+            #self.probability_table={item[0]:item[1] for item in probability_table}
 
     def _get_probs_from_file(self,filename,mode="rb"):
         file=open(filename,mode)        
         lines=[]
         line=file.readline()
-        while line!="":
-            lines.append(unicode(line,errors='replace'))
-            line=file.readline()            
-        dict={line.split(str(unichr(127)))[0]:float(line.split(str(unichr(127)))[1]) for line in lines}
-        self.probability_table=dict
+        lines=line.split(str(unichr(126)))        
+        dict={l.split(str(unichr(127)))[0]:float(l.split(str(unichr(127)))[1]) for l in lines if l!=os.linesep}
+        self.probability_table=sorted(dict.items(), key=operator.itemgetter(1))
         file.close()
+        self.build_tree()
         return dict
 
     def _write_probs_to_file(self,filename,mode="wb"):
         file=open(filename,mode)
-        for item in self.probability_table.items():
-            file.write(str(item[0])+str(unichr(127))+str(item[1]))
-            file.write(os.linesep)        
+        for item in self.probability_table:
+            file.write(item[0])
+            file.write(unicode(unichr(127)))
+            file.write(unicode(str(item[1]),errors='replace'))
+            file.write(unicode(str(unichr(126))))
 
     def encode_to_file(self,filename,message=None):
         if message:
@@ -75,15 +76,23 @@ class huffman:
         self._write_probs_to_file(filename+".htxt")        
         file=open(filename+".htxt","ab")
         file.write(os.linesep)
-        file.write(self.message)
+        for i in self._pack_to_int():
+            file.write(str(chr(i)))            
         file.close()
 
     def decode_from_file(self,filename):
         self._get_probs_from_file(filename)
         file=open(filename,"rb")
-        while file.readline()!="":pass
-        for line in file.readlines():
-            self.message+=line
+        file.readline()        
+        tmp=[]
+        try:
+            byte=file.read(1)
+            while byte:
+                tmp.append(self._unpack_int([ord(byte)]))
+                byte=file.read(1)      
+        finally:
+            file.close()  
+        self.message=''.join(tmp)
         self.decode()
 
     def build_tree(self):
@@ -119,6 +128,33 @@ class huffman:
         res.append(tmp_root)
         self.codes_dict.append({tmp_root.symbol:tmp_root.node_code}) 
         return self.codes_dict
+
+    def _pack_to_int(self):
+        j=0
+        res=[]
+        for i in xrange(8,len(self.message)+1,8):
+            str=self.message[j:i]
+            j=i
+            tmp_int=0
+            for k in range(8):
+                tmp_int+=(2**(7-k))*int(str[k])
+            res.append(tmp_int)
+        return res
+
+    def _unpack_int(self,list_int):
+        res=[]
+        for i in list_int:
+            b=str(bin(i)).split('b')[1]
+            tmp=[]
+            for j in range(1,9):
+                try:
+                    if b[-j]:
+                        tmp.append(b[-j])
+                except IndexError:
+                    tmp.append('0')
+            tmp.reverse()
+            res.append(''.join(tmp))
+        return ''.join(res)
 
 class tree_node:
     left=0
