@@ -2,6 +2,9 @@
 import operator
 import re
 import os
+import math
+import networkx as nx
+import matplotlib.pyplot as plt
 
 class huffman:
     message=""
@@ -85,13 +88,19 @@ class huffman:
         file=open(filename,"rb")
         file.readline()        
         tmp=[]
+        bytes_l=[]
         try:
             byte=file.read(1)
             while byte:
-                tmp.append(self._unpack_int([ord(byte)]))
+                bytes_l.append(byte)
+                #tmp.append(self._unpack_int([ord(byte)]))
                 byte=file.read(1)      
         finally:
             file.close()  
+        tmp_int=[ord(b) for b in bytes_l]
+        print tmp_int
+        print len(tmp_int)
+        tmp=self._unpack_int(tmp_int)
         self.message=''.join(tmp)
         self.decode()
 
@@ -133,28 +142,78 @@ class huffman:
         j=0
         res=[]
         for i in xrange(8,len(self.message)+1,8):
-            str=self.message[j:i]
-            j=i
-            tmp_int=0
-            for k in range(8):
-                tmp_int+=(2**(7-k))*int(str[k])
+            str=self.message[j:i] 
+            print str           
+            tmp_int=int(str,2)
             res.append(tmp_int)
+            j=i
+        ##############################
+        try:
+            if self.message[j:]:
+                str=self.message[j:]
+                t=['0' for i in range(8-len(self.message[j:]))]
+                str=str.join(t)
+                r=str+''.join(t)
+                res.append(int(str,2))
+        except IndexError:pass
+        print self.message
         return res
 
     def _unpack_int(self,list_int):
-        res=[]
-        for i in list_int:
-            b=str(bin(i)).split('b')[1]
+        res=[]   
+        l=list_int
+        for i in range(len(l)):
+            b=str(bin(l[i])).split('b')[1]
             tmp=[]
-            for j in range(1,9):
-                try:
-                    if b[-j]:
-                        tmp.append(b[-j])
-                except IndexError:
-                    tmp.append('0')
-            tmp.reverse()
-            res.append(''.join(tmp))
+            if i<len(l)-1:
+                for j in range(1,9):
+                    try:
+                        if b[-j]:
+                            tmp.append(b[-j])
+                    except IndexError:
+                        tmp.append('0')
+                tmp.reverse()
+                res.append(''.join(tmp))
+                print ''.join(res)
+                print len(''.join(res))
+            else:
+                tmp.append(b)
+                res.append(''.join(tmp))
+                print ''.join(res)
+                print len(''.join(res))
         return ''.join(res)
+        
+    def print_tree(self):
+        g=self._get_nx_graph()
+        nx.draw_networkx(nx.bfs_tree(g,self.root.node_prob_value),nx.spring_layout(g),node_color='w',node_size=2000)                
+        #nx.draw_networkx(nx.(g,self.root.node_prob_value),nx.spring_layout(g),node_color='w',node_size=2000)        
+        plt.show()
+
+    def _get_nx_graph(self,root=None, g=None,pos=None):
+        if not g:
+            g=nx.Graph()                    
+        if root:
+            tmp_root=root
+        else: tmp_root=self.root
+        if not pos:
+            pos={}
+        if tmp_root.right or tmp_root.left:    
+            pos[tmp_root.node_prob_value]=0
+            g.add_node(tmp_root.node_prob_value)               
+            pos=nx.spring_layout(g)              
+            #nx.draw_networkx(g,pos,node_color='w',node_size=2000)        
+            #plt.show()
+            if tmp_root.right:
+                self._get_nx_graph(tmp_root.right, g,pos)
+                g.add_edge(tmp_root.node_prob_value,tmp_root.right.node_prob_value)
+            if tmp_root.left:
+                self._get_nx_graph(tmp_root.left, g,pos)
+                g.add_edge(tmp_root.node_prob_value,tmp_root.left.node_prob_value)
+            return g
+
+    def print_node(self,node):
+        pass
+
 
 class tree_node:
     left=0
@@ -168,6 +227,4 @@ class tree_node:
         self.left=left
         self.right=right
         self.node_prob_value=node_prob
-        self.node_code=node_code
-    
-        
+        self.node_code=node_code 
