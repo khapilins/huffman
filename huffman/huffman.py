@@ -185,7 +185,10 @@ class huffman:
         
     def print_tree(self):
         g=self._get_nx_graph()
-        nx.draw_networkx(nx.bfs_tree(g,self.root.node_prob_value),nx.spring_layout(g),node_color='w',node_size=2000)                
+        g=nx.bfs_tree(g,round(self.root.node_prob_value,3))
+        pos=nx.spring_layout(g)
+        nx.draw_networkx(g,pos,node_color='w',node_size=2000)                
+        nx.draw_networkx_edge_labels(g,pos)
         #nx.draw_networkx(nx.(g,self.root.node_prob_value),nx.spring_layout(g),node_color='w',node_size=2000)        
         plt.show()
 
@@ -195,21 +198,17 @@ class huffman:
         if root:
             tmp_root=root
         else: tmp_root=self.root
-        if not pos:
-            pos={}
-        if tmp_root.right or tmp_root.left:    
-            pos[tmp_root.node_prob_value]=0
-            g.add_node(tmp_root.node_prob_value)               
-            pos=nx.spring_layout(g)              
-            #nx.draw_networkx(g,pos,node_color='w',node_size=2000)        
-            #plt.show()
-            if tmp_root.right:
-                self._get_nx_graph(tmp_root.right, g,pos)
-                g.add_edge(tmp_root.node_prob_value,tmp_root.right.node_prob_value)
-            if tmp_root.left:
-                self._get_nx_graph(tmp_root.left, g,pos)
-                g.add_edge(tmp_root.node_prob_value,tmp_root.left.node_prob_value)
-            return g
+        tmp_r_nx=round(tmp_root.node_prob_value,3)       
+        g.add_node(tmp_r_nx,{''})                      
+        if tmp_root.right:
+            tmp_r_r_nx=round(tmp_root.right.node_prob_value,3)       
+            self._get_nx_graph(tmp_root.right, g,pos)
+            g.add_edge(tmp_r_nx,tmp_r_r_nx,{'':1})
+        if tmp_root.left:
+            tmp_r_l_nx=round(tmp_root.left.node_prob_value,3)       
+            self._get_nx_graph(tmp_root.left, g,pos)
+            g.add_edge(tmp_r_nx,tmp_r_l_nx,{'':0})
+        return g
 
     def print_node(self,node):
         pass
