@@ -18,6 +18,7 @@ class huffman:
     leaves=[]
 
     def encode(self):
+        """encoding message using current probability table (can be changed whenever you want)""" 
         self.get_list_of_codes()
         self.codes_dict={i.items()[0][0]:i.items()[0][1] for i in self.codes_dict if i.items()[0][0]}
         for item in self.codes_dict.items():
@@ -26,6 +27,7 @@ class huffman:
         return self.message
 
     def decode(self):
+        """decode message using current tree (can be built with current probability table using self.build_tree())"""
         msg=self.message
         tmp_root=self.root
         res=[]        
@@ -41,19 +43,19 @@ class huffman:
                 res.append(tmp_root.symbol)
                 tmp_root=self.root
         self.message=''.join(res)
-        return res
-
+        return res    
 
     def __init__(self,input_message):
+        """automatically generates probability table for current message"""
         if input_message:
             self.message=input_message
             self.probability_table=dict.fromkeys([c for c in self.message],0.)
             for c in self.message:
                 self.probability_table[c]+=1./len(self.message)
-            self.probability_table=sorted(self.probability_table.items(), key=operator.itemgetter(1))
-            #self.probability_table={item[0]:item[1] for item in probability_table}
+            self.probability_table=sorted(self.probability_table.items(), key=operator.itemgetter(1))            
 
     def _get_probs_from_file(self,filename,mode="rb"):
+        """reads probability table  from file"""
         file=open(filename,mode)        
         lines=[]
         line=file.readline()
@@ -65,6 +67,7 @@ class huffman:
         return dict
 
     def _write_probs_to_file(self,filename,mode="wb"):
+        """writes probability table  from file"""
         file=open(filename,mode)
         for item in self.probability_table:
             file.write(item[0])
@@ -73,6 +76,7 @@ class huffman:
             file.write(unicode(str(unichr(126))))
 
     def encode_to_file(self,filename,message=None):
+        """writes encoded message with its probability_table to file"""
         if message:
             self.message=message        
         self.encode()
@@ -84,6 +88,7 @@ class huffman:
         file.close()
 
     def decode_from_file(self,filename):
+        """decodes encoded message with its probability_table from file"""
         self._get_probs_from_file(filename)
         file=open(filename,"rb")
         file.readline()        
@@ -105,6 +110,7 @@ class huffman:
         self.decode()
 
     def build_tree(self):
+        """building huffman tree for current probabilities"""
         self.leaves=[tree_node(item[1],item[0]) for item in self.probability_table]
         tmp=[]
         list=self.leaves[:]
@@ -120,6 +126,7 @@ class huffman:
         return self.root
 
     def get_list_of_codes(self,node=None,codes_list=None):
+        """get codes for each char"""
         if not node:
             self.root=self.build_tree()                           
             tmp_root=self.root
@@ -139,6 +146,7 @@ class huffman:
         return self.codes_dict
 
     def _pack_to_int(self):
+        """"packing our message into ascii codes"""
         j=0
         res=[]
         for i in xrange(8,len(self.message)+1,8):
@@ -160,6 +168,7 @@ class huffman:
         return res
 
     def _unpack_int(self,list_int):
+        """unpacking message from file"""
         res=[]   
         l=list_int
         for i in range(len(l)):
@@ -184,44 +193,49 @@ class huffman:
         return ''.join(res)
         
     def print_tree(self):
-        g=self._get_nx_graph()
-        g=nx.bfs_tree(g,round(self.root.node_prob_value,3))
-        pos=nx.spring_layout(g)
-        nx.draw_networkx(g,pos,node_color='w',node_size=2000)                
-        nx.draw_networkx_edge_labels(g,pos)
-        #nx.draw_networkx(nx.(g,self.root.node_prob_value),nx.spring_layout(g),node_color='w',node_size=2000)        
+        """trying to print tree using netwrkx I guess if graphviz was installed it would be much prettier"""
+        g=self._get_nx_graph()        
+        g=nx.bfs_tree(g,str(round(self.root.node_prob_value,3)))                
+        pos=nx.spring_layout(g)       
+
+        for i in pos:
+            pos[i][0] = pos[i][0] **2 # x coordinate
+            pos[i][1] = pos[i][1] **2 # y coordinate
+        nx.draw_networkx(g,pos,node_color='w',node_size=1000,with_labels=False)        
+        nx.draw_networkx_labels(g,pos,font_size=10)                                        
         plt.show()
 
     def _get_nx_graph(self,root=None, g=None,pos=None):
+        """get networkx graph from tree"""
         if not g:
             g=nx.Graph()                    
         if root:
             tmp_root=root
         else: tmp_root=self.root
-        tmp_r_nx=round(tmp_root.node_prob_value,3)       
-        g.add_node(tmp_r_nx,{''})                      
+        tmp_r_nx=round(tmp_root.node_prob_value,3)
+        tmp_r_nx=str(tmp_r_nx)
+        g.add_node(tmp_r_nx)        
         if tmp_root.right:
-            tmp_r_r_nx=round(tmp_root.right.node_prob_value,3)       
+            tmp_r_r_nx=round(tmp_root.right.node_prob_value,3)      
+            tmp_r_r_nx=str(tmp_r_r_nx)
             self._get_nx_graph(tmp_root.right, g,pos)
-            g.add_edge(tmp_r_nx,tmp_r_r_nx,{'':1})
+            g.add_edge(tmp_r_nx,tmp_r_r_nx,)
         if tmp_root.left:
             tmp_r_l_nx=round(tmp_root.left.node_prob_value,3)       
+            tmp_r_l_nx=str(tmp_r_l_nx)
             self._get_nx_graph(tmp_root.left, g,pos)
-            g.add_edge(tmp_r_nx,tmp_r_l_nx,{'':0})
+            g.add_edge(tmp_r_nx,tmp_r_l_nx)
         return g
-
-    def print_node(self,node):
-        pass
 
 
 class tree_node:
     left=0
     right=0
-    symbol=None
+    symbol=''
     node_code=""
     node_prob_value=0
 
-    def __init__(self, node_prob=1,symbol=None, node_code="",left=0,right=0):
+    def __init__(self, node_prob=1,symbol='', node_code="",left=0,right=0):
         self.symbol=symbol
         self.left=left
         self.right=right
